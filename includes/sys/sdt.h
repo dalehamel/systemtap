@@ -229,8 +229,21 @@ __extension__ extern unsigned long long __sdt_unsp;
 # define _SDT_ASM_AUTOGROUP ""
 #endif
 
+/* If semaphores are not supported, fall back to providing a label so that
+   the probe address can be bound to a function, and the checked for a
+   platform specific probe insn, such as 0x90 and 0xCC on X86 */
+#if _SDT_HAS_SEMAPHORES
+#define _SDT_UPROBE_CHECK_LABEL(provider, name) ""
+#else
+#define _SDT_UPROBE_CHECK_LABEL(provider, name) \
+ _SDT_ASM_1(.ifndef provider##_##name##_asm_check) \
+ _SDT_ASM_1(		provider##_##name##_asm_check:) \
+ _SDT_ASM_1(.endif)
+#endif
+
 #define _SDT_ASM_BODY(provider, name, pack_args, args)			      \
-  _SDT_ASM_1(990:	_SDT_NOP)					      \
+  _SDT_UPROBE_CHECK_LABEL(provider, name)                                  \
+  _SDT_ASM_1(990:    _SDT_NOP)                                             \
   _SDT_ASM_3(		.pushsection .note.stapsdt,_SDT_ASM_AUTOGROUP,"note") \
   _SDT_ASM_1(		.balign 4)					      \
   _SDT_ASM_3(		.4byte 992f-991f, 994f-993f, _SDT_NOTE_TYPE)	      \
@@ -256,7 +269,7 @@ __extension__ extern unsigned long long __sdt_unsp;
   _SDT_ASM_1(		.popsection)					      \
   _SDT_ASM_1(.endif)
 
-#if defined _SDT_HAS_SEMAPHORES
+#if _SDT_HAS_SEMAPHORES
 #define _SDT_SEMAPHORE(p,n) _SDT_ASM_1(		_SDT_ASM_ADDR p##_##n##_semaphore)
 #else
 #define _SDT_SEMAPHORE(p,n) _SDT_ASM_1(		_SDT_ASM_ADDR 0)
