@@ -243,7 +243,8 @@ __extension__ extern unsigned long long __sdt_unsp;
    0xd503201f and 0xd4200000 respectively. These labels make the start and
    end of a single insn, so that the difference can be calculated */
 
-// Is it ok to declare these here?
+// TODO Is it ok to declare these here? Should these prefix with _ or __ to be
+// made more internal?
 void sdt_asm_nop_start();
 void sdt_asm_nop_end();
 
@@ -252,11 +253,9 @@ void sdt_asm_nop_end();
    compute the size of a NOP insn on the target platform */
 #define _SDT_ASM_NOP_SIZE_CHECK \
   _SDT_ASM_1(.ifndef std_asm_nop_start) \
-  _SDT_ASM_1(		sdt_asm_nop_start:)\
-  _SDT_ASM_1(		9991: _SDT_NOP) \
-  _SDT_ASM_1(		sdt_asm_nop_end:)\
-  _SDT_ASM_1(		9992: _SDT_NOP) \
-  _SDT_ASM_1(.enddif) \
+  _SDT_ASM_1(		sdt_asm_nop_start: _SDT_NOP) \
+  _SDT_ASM_1(		sdt_asm_nop_end: _SDT_NOP) \
+  _SDT_ASM_1(.endif) \
 
 // Shift the mask in accordance with the platform NOP insn size
 #define _SDT_ASM_PLATFORM_MASK(start, end, mask)\
