@@ -229,9 +229,14 @@ __extension__ extern unsigned long long __sdt_unsp;
 # define _SDT_ASM_AUTOGROUP ""
 #endif
 
-/* If semaphores are not supported, fall back to providing a label so that
-   the probe address can be bound to a function, and the checked for a
-   platform specific probe insn, such as 0x90 and 0xCC on X86 */
+/* If semaphores are not supported, "auto semaphores" are available as a
+   fall-back. These work by comparing the assembly of the expected NOP insn
+   with a reference of the nop insn for the platform. If a breakpoint is set,
+   these values will not match. For example, on X86 the expected 0x90 will be
+   a 0xCC. This allows an alternative implementation for _ENABLED() so long
+   as *all* locations of the USDT tracepoint in the binary have the breakpoint.
+   This is less efficient than the reference counter as it requires a couple
+   more instructions to be platform agnostic. */
 #if _SDT_HAS_AUTO_SEMAPHORES
 
 /* Different platforms may use 1-4 bytes for their NOP and equivalent of INT3.
@@ -254,6 +259,7 @@ void sdt_asm_nop_end();
   _SDT_ASM_1(.endif) \
 
 // Shift the mask in accordance with the platform NOP insn size
+// FIXME maybe store and compute the width as a .4byte and read this to save an op?
 #define _SDT_ASM_PLATFORM_MASK(start, end, mask)\
         mask >> ((sizeof(mask) - (end-start)) * 8)
 
