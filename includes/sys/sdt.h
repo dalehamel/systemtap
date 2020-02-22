@@ -232,13 +232,25 @@ __extension__ extern unsigned long long __sdt_unsp;
 /* If semaphores are not supported, fall back to providing a label so that
    the probe address can be bound to a function, and the checked for a
    platform specific probe insn, such as 0x90 and 0xCC on X86 */
-#if _SDT_HAS_SEMAPHORES
-#define _SDT_UPROBE_CHECK_LABEL(provider, name) ""
-#else
+#if _SDT_HAS_AUTO_SEMAPHORES
 #define _SDT_UPROBE_CHECK_LABEL(provider, name) \
  _SDT_ASM_1(.ifndef provider##_##name##_asm_check) \
  _SDT_ASM_1(		provider##_##name##_asm_check:) \
  _SDT_ASM_1(.endif)
+#else
+#define _SDT_UPROBE_CHECK_LABEL(provider, name)
+#endif
+
+/* Different platforms may use 1-4 bytes for their NOP and equivalent of INT3.
+   For instance, x86 uses 0x90 and 0xCC respectively, whereas aarch64 uses
+   0xd503201f and 0xd4200000 respectively. These labels make the start and
+   end of a single insn, so that the difference can be calculated */
+#if _SDT_HAS_AUTO_SEMAPHORES
+#define _SDT_ASM_NOP_SIZE_CHECK \
+  _SDT_ASM_1(sdt_asm_nop_start:)\
+  _SDT_ASM_1(9991: _SDT_NOP) \
+  _SDT_ASM_1(sdt_asm_nop_end:)\
+  _SDT_ASM_1(9992: _SDT_NOP)
 #endif
 
 #define _SDT_ASM_BODY(provider, name, pack_args, args)			      \
