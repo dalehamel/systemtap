@@ -233,28 +233,55 @@ __extension__ extern unsigned long long __sdt_unsp;
    the probe address can be bound to a function, and the checked for a
    platform specific probe insn, such as 0x90 and 0xCC on X86 */
 #if _SDT_HAS_AUTO_SEMAPHORES
-#define _SDT_UPROBE_CHECK_LABEL(provider, name) \
+#define _SDT_PROBE_ASM_CHECK_LABEL(provider, name) \
  _SDT_ASM_1(.ifndef provider##_##name##_asm_check) \
  _SDT_ASM_1(		provider##_##name##_asm_check:) \
  _SDT_ASM_1(.endif)
-#else
-#define _SDT_UPROBE_CHECK_LABEL(provider, name)
-#endif
 
 /* Different platforms may use 1-4 bytes for their NOP and equivalent of INT3.
    For instance, x86 uses 0x90 and 0xCC respectively, whereas aarch64 uses
    0xd503201f and 0xd4200000 respectively. These labels make the start and
    end of a single insn, so that the difference can be calculated */
-#if _SDT_HAS_AUTO_SEMAPHORES
+
+// Is it ok to declare these here?
+void sdt_asm_nop_start();
+void sdt_asm_nop_end();
+
+/* The first NOP is for reference of a platform nop insn.
+   the second NOP is to have a tag to anchor the end insn on in order to
+   compute the size of a NOP insn on the target platform */
 #define _SDT_ASM_NOP_SIZE_CHECK \
-  _SDT_ASM_1(sdt_asm_nop_start:)\
-  _SDT_ASM_1(9991: _SDT_NOP) \
-  _SDT_ASM_1(sdt_asm_nop_end:)\
-  _SDT_ASM_1(9992: _SDT_NOP)
-#endif
+  _SDT_ASM_1(.ifndef std_asm_nop_start) \
+  _SDT_ASM_1(		sdt_asm_nop_start:)\
+  _SDT_ASM_1(		9991: _SDT_NOP) \
+  _SDT_ASM_1(		sdt_asm_nop_end:)\
+  _SDT_ASM_1(		9992: _SDT_NOP) \
+  _SDT_ASM_1(.enddif) \
+
+// Shift the mask in accordance with the platform NOP insn size
+#define _SDT_ASM_PLATFORM_MASK(start, end, mask)\
+        mask >> ((sizeof(mask) - (end-start)) * 8)
+
+/* This assumption is based on NOP insn size never being more than 4 bytes,
+   the majority of platforms this will be 1-4 bytes */
+#define _SDT_ASM_READ_NOP(target, start, end)\
+   (*(uint32_t *) target) & _SDT_ASM_PLATFORM_MASK(start, end, 0xFFFFFFFF)
+
+/* The masked probe address is compared with reference NOP insn for equality
+   with XOR, if a probe is attached this check should fail*/
+#define _SDT_PLATFORM_ASM_ENABLED(provider, name) \
+    (_SDT_ASM_READ_NOP(provider##_##name##_asm_check, \
+                       sdt_asm_nop_start, \
+                       sdt_asm_nop_end) ^ \
+     _SDT_ASM_READ_NOP(sdt_asm_nop_start, \
+                       sdt_asm_nop_start, \
+                       sdt_asm_nop_end) ) != 0
+#else
+# define _SDT_PROBE_ASM_CHECK_LABEL(provider, name)
+#endif // _SDT_HAS_AUTO_SEMAPHORES
 
 #define _SDT_ASM_BODY(provider, name, pack_args, args)			      \
-  _SDT_UPROBE_CHECK_LABEL(provider, name)                                  \
+  _SDT_PROBE_ASM_CHECK_LABEL(provider, name)                               \
   _SDT_ASM_1(990:    _SDT_NOP)                                             \
   _SDT_ASM_3(		.pushsection .note.stapsdt,_SDT_ASM_AUTOGROUP,"note") \
   _SDT_ASM_1(		.balign 4)					      \
