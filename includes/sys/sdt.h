@@ -233,10 +233,6 @@ __extension__ extern unsigned long long __sdt_unsp;
    the probe address can be bound to a function, and the checked for a
    platform specific probe insn, such as 0x90 and 0xCC on X86 */
 #if _SDT_HAS_AUTO_SEMAPHORES
-#define _SDT_PROBE_ASM_CHECK_LABEL(provider, name) \
- _SDT_ASM_1(.ifndef provider##_##name##_asm_check) \
- _SDT_ASM_1(		provider##_##name##_asm_check:) \
- _SDT_ASM_1(.endif)
 
 /* Different platforms may use 1-4 bytes for their NOP and equivalent of INT3.
    For instance, x86 uses 0x90 and 0xCC respectively, whereas aarch64 uses
@@ -275,6 +271,13 @@ void sdt_asm_nop_end();
      _SDT_ASM_READ_NOP(sdt_asm_nop_start, \
                        sdt_asm_nop_start, \
                        sdt_asm_nop_end) ) != 0
+
+/* This label adds a symbolic reference to the probe address in the form of a
+   void function pointer, keeping track of the relocation offset of the probe */
+#define _SDT_PROBE_ASM_CHECK_LABEL(provider, name) \
+ _SDT_ASM_1(.ifndef provider##_##name##_asm_check) \
+ _SDT_ASM_1(		provider##_##name##_asm_check:) \
+ _SDT_ASM_1(.endif)
 #else
 # define _SDT_PROBE_ASM_CHECK_LABEL(provider, name)
 #endif // _SDT_HAS_AUTO_SEMAPHORES
