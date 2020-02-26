@@ -232,17 +232,17 @@ __extension__ extern unsigned long long __sdt_unsp;
 /* If semaphores are not supported, fall back to providing a label so that
    the probe address can be bound to a function, and the checked for a
    platform specific probe insn, such as 0x90 and 0xCC on X86 */
-#if _SDT_HAS_SEMAPHORES
-#define _SDT_UPROBE_CHECK_LABEL(provider, name) ""
-#else
-#define _SDT_UPROBE_CHECK_LABEL(provider, name) \
+#if _SDT_HAS_AUTO_SEMAPHORES
+#define _SDT_PROBE_ASM_CHECK_LABEL(provider, name) \
  _SDT_ASM_1(.ifndef provider##_##name##_asm_check) \
  _SDT_ASM_1(		provider##_##name##_asm_check:) \
  _SDT_ASM_1(.endif)
+#else
+#define _SDT_PROBE_ASM_CHECK_LABEL(provider, name)
 #endif
 
 #define _SDT_ASM_BODY(provider, name, pack_args, args)			      \
-  _SDT_UPROBE_CHECK_LABEL(provider, name)                                  \
+  _SDT_PROBE_ASM_CHECK_LABEL(provider, name)                               \
   _SDT_ASM_1(990:    _SDT_NOP)                                             \
   _SDT_ASM_3(		.pushsection .note.stapsdt,_SDT_ASM_AUTOGROUP,"note") \
   _SDT_ASM_1(		.balign 4)					      \
