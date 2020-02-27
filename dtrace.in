@@ -35,7 +35,7 @@ try:
 except ImportError:
     HAVE_PYP = False
 
-def auto_semaphore_supported():
+def auto_semaphores_supported():
     return platform.machine() in ["x86", "x86_64"]
 
 # Common file creation methods for pyparsing and string pattern matching
@@ -114,7 +114,7 @@ class _HeaderCreator(object):
         define_str += ") \\\n"
         probe_def = '%s\n' % (comment_str)
         if self.semaphore_fallback:
-            if uprobe_fallback_supported():
+            if auto_semaphores_supported():
                 probe_def += ('#define %s_ENABLED() __builtin_expect (_SDT_PROBE_ASM_CHECK_LABEL(%s, %s), 0)\n' % \
                               (this_probe_canon, this_provider, this_probe))
         else:
@@ -129,7 +129,7 @@ class _HeaderCreator(object):
             probe_def += ("__extension__ extern unsigned short %s_%s_semaphore __attribute__ ((unused)) __attribute__ ((section (\".probes\")));\n" % \
                       (this_provider, this_probe))
         probe_def += (define_str + stap_str + "\n")
-        if self.semaphore_fallback and auto_semaphore_supported():
+        if self.semaphore_fallback and auto_semaphores_supported():
             # Function prototype to match with asm label for probe address
             probe_def += ('void %s_%s_asm_check();\n' % (this_provider, this_probe))
         probe_def += "\n"
